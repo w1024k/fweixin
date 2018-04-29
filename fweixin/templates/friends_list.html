@@ -1,0 +1,122 @@
+{% extends "list_base.html" %}
+
+
+{% block body %}
+<h2>好友列表</h2>
+<p>
+    <a href="http://127.0.0.1:8000/chat/room/" title="已保存的群聊">群聊列表</a>
+    <a href="http://127.0.0.1:8000/sex/count/" title="性别分布统计" target=_blank>分布统计</a>
+    <button id="search">搜索:</button>
+    <input type="text" name="search" value="{{ rsp_data.name }}">
+    <button id="send_all">发送给所有人(未测试):</button>
+    <input type="text" name="send_all">
+
+
+</p>
+<hr/>
+{% for user in rsp_data.data %}
+<blockquote>
+    <p>昵称:{{ user.nickname }} <code>(备注:{{ user.RemarkName }})</code> <code>(城市:{{ user.City }})</code> <code>(性别:{{
+        user.sex }})</code>
+        <button class='msgButton' data-id="{{ loop.index0 }}">发送消息</button>
+    </p>
+    <p>个性签名: {{ user.signature }}</p>
+    <p class="sendMsg">
+        <input type="text" class="wait_time" value="0">多少分钟后发送<br>
+        <input type="text" class="times" value="1">发送次数<br>
+        <input type="text" class="split_time" value="0">每次发送间隔时间<br>
+        <input type="text" class="msg" value="">内容 <br>
+        <button data-name={{ user.UserName }} data-id={{ loop.index0 }} class='submitMsg'>提交</button>
+    </p>
+</blockquote>
+<hr/>
+{% endfor %}
+
+{% endblock body %}
+
+
+{% block js %}
+<script>
+
+    //封装个each方法
+    function each(list, callback) {
+        for (var i = 0; i < list.length; i++) {
+            callback(i, list[i]);
+        }
+    }
+
+    function $get(url, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url);
+        xhr.send();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                callback(JSON.parse(xhr.responseText));
+            }
+        };
+    }
+
+
+    //隐藏消息框
+    var sendMsg = document.getElementsByClassName('sendMsg');
+    each(sendMsg, function (index, obj) {
+        obj.style.display = "none";
+    });
+
+    //点击打开消息框
+    var msgButton = document.getElementsByClassName('msgButton');
+    each(msgButton, function (index, button) {
+        button.onclick = function () {
+            var id = button.getAttribute('data-id');
+            if (button.innerHTML == "发送消息") {
+                sendMsg[id].style.display = "block"
+                button.innerHTML = "隐藏";
+            } else {
+                sendMsg[id].style.display = "none"
+                button.innerHTML = "发送消息";
+            }
+
+        };
+    });
+
+
+    //发送消息
+    submitMsg = document.getElementsByClassName('submitMsg');
+    each(submitMsg, function (index, submit) {
+        var sp = submit.parentNode;
+        submit.onclick = function () {
+            var username = submit.getAttribute('data-name');
+            var times = sp.getElementsByClassName('times')[0].value;
+            var wait_time = sp.getElementsByClassName('wait_time')[0].value;
+            var split_time = sp.getElementsByClassName('split_time')[0].value;
+            var msg = sp.getElementsByClassName('msg')[0].value;
+            var data = 'times=' + times + '&wait_time=' + wait_time + '&split_time=' + split_time + '&msg=' + msg + '&username=' + username;
+            $get('http://127.0.0.1:8000/send/msg/?' + data, function (data) {
+                if (data.code == 10000) {
+                    alert('你已经成功提交请求')
+                }
+            })
+        }
+    });
+
+    //send_all
+    send_all = document.getElementById('send_all');
+    send_all.onclick = function () {
+        var data = 'msg=' + document.getElementsByName('send_all')[0].value;
+        $get('http://127.0.0.1:8000/send/msg/all/?' + data, function (data) {
+            if (data.code == 10000) {
+                alert('你已经成功提交请求')
+            }
+        })
+    }
+
+    //search
+    search = document.getElementById('search');
+    search.onclick = function () {
+        var name = document.getElementsByName('search')[0].value;
+        location.href = '/?name=' + name
+    }
+
+
+</script>
+{% endblock js %}

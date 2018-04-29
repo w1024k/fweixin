@@ -1,0 +1,16 @@
+{% extends "list_base.html" %}
+
+
+{% block body %}
+<h2>群聊列表</h2>
+<p><a href="http://127.0.0.1:8000" title="好友列表">好友列表</a> <a href="http://127.0.0.1:8000/sex/count/"
+                                                                     title="性别分布统计" target=_blank>分布统计</a></p>
+<hr/>
+{% for room in rsp_data.data %}
+<blockquote>
+    <p>昵称:{{ room.nickname }} <code>(成员数:{{ room.memberCount }})</code></p>
+</blockquote>
+<hr/>
+{% endfor %}
+
+{% endblock body %}
