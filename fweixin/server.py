@@ -1,8 +1,4 @@
 # coding=utf-8
-import sys, os
-
-reload(sys)
-sys.setdefaultencoding('utf-8')
 from flask import Flask, request, Response, render_template
 import copy
 import threading
@@ -17,40 +13,34 @@ import StringIO
 app = Flask(__name__)
 
 
-# @app.route('/')
-# def test():
-#     return render_template('friends.html')
-
-
 @app.route('/')
 def friend_list():
     rsp_data = copy.copy(settings.ERROR['SUCC'])
 
     name = request.values.get('name', '')
     if name:
-        friend_list = itchat.search_friends(name=name)
+        friends = itchat.search_friends(name=name)
     else:
         try:
-            friend_list = itchat.get_friends(request.args.get('update', False))
+            friends = itchat.get_friends(request.args.get('update', False))
         except Exception as e:
             rsp_data = copy.copy(settings.ERROR['ERROR'])
             rsp_data['data'] = e
             return Response(json.dumps(rsp_data), mimetype='application/json')
     records = list()
 
-    for friend in friend_list:
+    for friend in friends:
         detail = {
             'nickname': friend['NickName'],
             'RemarkName': friend['RemarkName'],
             'signature': friend['Signature'],
-            'sex': settings.SEX_CHOICES[int(friend['Sex'])],
+            'sex': settings.SEX_MAPPING[int(friend['Sex'])],
             'City': friend['City'],
             'UserName': friend['UserName'],
         }
         records.append(detail)
     rsp_data['data'] = records
     rsp_data['name'] = name
-    # return Response(json.dumps(rsp_data), mimetype='application/json')
     return render_template('friends_list.html', rsp_data=rsp_data)
 
 
@@ -78,27 +68,26 @@ def chat_room():
 
 @app.route('/sex/count/')
 def sex_count():
-    rsp_data = copy.copy(settings.ERROR['SUCC'])
     try:
-        friend_list = itchat.get_friends(request.args.get('update', False))
+        friends = itchat.get_friends(request.args.get('update', False))
     except Exception as e:
         rsp_data = copy.copy(settings.ERROR['ERROR'])
         rsp_data['data'] = e
         return Response(json.dumps(rsp_data), mimetype='application/json')
-    man = woman = other = 0
-    for friend in friend_list:
-        sex = int(friend['Sex'])
-        if sex == 1:
-            man += 1
-        elif sex == 0:
-            woman += 1
-        else:
-            other += 1
+    man_count = woman_count = other_count = 0
+    for friend in friends:
+        sex_num = int(friend['Sex'])
 
-    labels = ['man', 'woman', 'other']
-    X = [man, woman, other]
-    plt.pie(X, labels=labels, autopct='%1.2f%%')
-    plt.title("friend sex count")
+        if settings.SexEnum.MAN == sex_num:
+            man_count += 1
+        elif settings.SexEnum.WOMAN == sex_num:
+            woman_count += 1
+        else:
+            other_count += 1
+
+    labels = settings.SEX_MAPPING.values()
+    plt.pie([woman_count, man_count, other_count], labels=labels, autopct='%1.2f%%')
+    plt.title("hello friend")
 
     s = StringIO.StringIO()
     plt.savefig(s)
@@ -139,25 +128,19 @@ def send_friend(times=1, name='', msg='', wait_time=0, split_time=1):
 def send_all():
     msg = request.values.get('msg', '')
     try:
-        friend_list = itchat.get_friends(request.args.get('update', False))
+        friends = itchat.get_friends(request.args.get('update', False))
     except Exception as e:
         rsp_data = copy.copy(settings.ERROR['ERROR'])
         rsp_data['data'] = e
         return Response(json.dumps(rsp_data), mimetype='application/json')
     q = list()
-    for friend in friend_list:
+    for friend in friends:
         q.append(friend["UserName"])
     gevent.joinall([gevent.spawn(tools.send_all_handler, username, msg) for username in friend_list])
 
 
 if __name__ == '__main__':
-    plt.rcParams['font.sans-serif'] = ['SimHei']
-    qr_png = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'QR.png')
-    itchat_pkl = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'itchat.pkl')
-    if os.path.exists(qr_png):
-        os.remove(qr_png)
-    if os.path.exists(itchat_pkl):
-        os.remove(itchat_pkl)
+    tools.clean_login_cache(settings.QR_PNG, settings.CHAT_PKL)
     login_thread = threading.Thread(target=itchat.auto_login,
                                     kwargs=(dict(hotReload=True, loginCallback=tools.loginCallback)))
     login_thread.start()

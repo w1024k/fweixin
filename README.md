@@ -1,5 +1,5 @@
 ## fweixin
->使用itchat,flask做的小玩具
+>使用itchat,flask做的小玩具(itchat可在阿里的源上找到)
 
 **功能描述**
 
